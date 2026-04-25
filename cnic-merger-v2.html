@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>CNIC Merger Pro</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600;700&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #f0ede8;
+  --surface:   #faf9f6;
+  --card:      #ffffff;
+  --ink:       #1c1a16;
+  --ink2:      #6b6760;
+  --accent:    #d4522a;
+  --accent2:   #2a6bd4;
+  --border:    #dedad4;
+  --shadow:    rgba(28,26,22,0.12);
+  --radius:    12px;
+}
+
+body {
+  font-family: 'Outfit', sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Header ── */
+header {
+  background: var(--ink);
+  color: #f0ede8;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  gap: 10px;
+}
+.header-left { display: flex; align-items: center; gap: 10px; }
+.logo { 
+  font-family: 'DM Mono', monospace; 
+  font-size: 0.7rem; 
+  background: var(--accent); 
+  color: #fff; 
+  padding: 4px 8px; 
+  border-radius: 6px; 
+  letter-spacing: 0.05em;
+}
+header h1 { font-size: 0.95rem; font-weight: 600; letter-spacing: -0.01em; }
+header p  { font-size: 0.65rem; color: #a09d98; font-weight: 300; }
+
+/* ── Layout ── */
+.workspace {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  overflow: hidden;
+  gap: 0;
+}
+
+/* ── Left panel ── */
+.panel {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.section {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.section-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.6rem;
+  color: var(--ink2);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 10px;
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: 4px;
+  padding: 10px 14px 0;
+  flex-shrink: 0;
+}
+.tab-btn {
+  flex: 1;
+  padding: 8px 6px;
+  border: 1.5px solid var(--border);
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  background: var(--bg);
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--ink2);
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex; align-items: center; justify-content: center; gap: 5px;
+}
+.tab-btn.active {
+  background: var(--surface);
+  color: var(--ink);
+  border-color: var(--border);
+}
+.tab-front.active { border-top: 2.5px solid var(--accent); }
+.tab-back.active  { border-top: 2.5px solid var(--accent2); }
+
+.dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.dot-front { background: var(--accent); }
+.dot-back  { background: var(--accent2); }
+
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* Upload zone */
+.upload-zone {
+  border: 1.5px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 16px 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  background: var(--bg);
+}
+.upload-zone:hover, .upload-zone.drag-over {
+  border-color: var(--accent);
+  background: #fdf0ec;
+}
+.upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.upload-icon { font-size: 1.6rem; margin-bottom: 5px; }
+.upload-zone strong { font-size: 0.78rem; display: block; margin-bottom: 2px; }
+.upload-zone p { font-size: 0.68rem; color: var(--ink2); }
+
+.thumb-row {
+  margin-top: 10px;
+  position: relative;
+  display: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #f5f5f0;
+}
+.thumb-row img {
+  width: 100%; height: 80px;
+  object-fit: contain;
+  display: block;
+}
+.thumb-row .del-btn {
+  position: absolute; top: 4px; right: 4px;
+  background: rgba(28,26,22,0.75);
+  border: none; border-radius: 50%;
+  width: 20px; height: 20px;
+  color: #fff; font-size: 10px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(3px);
+}
+
+/* Controls */
+.ctrl-group { margin-bottom: 10px; }
+.ctrl-group-label {
+  font-size: 0.65rem;
+  color: var(--ink2);
+  font-weight: 500;
+  margin-bottom: 5px;
+  display: flex; align-items: center; gap: 5px;
+}
+.ctrl-row { display: flex; gap: 5px; }
+
+.btn {
+  flex: 1;
+  padding: 9px 6px;
+  border: 1.5px solid var(--border);
+  border-radius: 9px;
+  background: var(--card);
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--ink);
+  cursor: pointer;
+  transition: all 0.14s;
+  display: flex; align-items: center; justify-content: center; gap: 4px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn:hover { border-color: var(--accent); background: #fdf0ec; color: var(--accent); }
+.btn:active { transform: scale(0.95); }
+
+.btn.accent { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn.accent2 { background: var(--accent2); color: #fff; border-color: var(--accent2); }
+
+/* Position display */
+.pos-display {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.65rem;
+  color: var(--ink2);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 6px 10px;
+  margin-bottom: 8px;
+  display: flex; gap: 10px;
+}
+.pos-display span { color: var(--ink); font-weight: 500; }
+
+/* Reset button */
+.reset-row { padding-top: 8px; border-top: 1px solid var(--border); }
+
+/* Export section */
+.export-section {
+  padding: 12px 14px;
+  margin-top: auto;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  flex-shrink: 0;
+}
+.export-btn {
+  width: 100%;
+  padding: 11px;
+  border: none;
+  border-radius: 10px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.16s;
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+  touch-action: manipulation;
+}
+.export-btn:active { transform: scale(0.98); }
+.export-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-pdf { background: var(--ink); color: var(--bg); }
+.btn-pdf:hover { background: #2c2a24; }
+.btn-jpg { background: var(--accent); color: #fff; box-shadow: 0 3px 12px rgba(212,82,42,0.3); }
+.btn-jpg:hover { filter: brightness(1.07); }
+
+/* ── A4 Preview ── */
+.preview-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: #ccc9c2;
+  background-image: 
+    radial-gradient(circle at 25% 25%, #d5d1ca 0%, transparent 50%),
+    radial-gradient(circle at 75% 75%, #bab7b0 0%, transparent 50%);
+  gap: 10px;
+  overflow: hidden;
+}
+
+.preview-tag {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.6rem;
+  color: rgba(28,26,22,0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  align-self: flex-start;
+}
+
+.a4-outer {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.a4-shadow {
+  box-shadow: 0 8px 32px rgba(0,0,0,0.35), 0 2px 8px rgba(0,0,0,0.2);
+  position: relative;
+}
+
+#previewCanvas {
+  display: block;
+}
+
+/* Toast */
+#toast {
+  position: fixed; bottom: 16px; left: 50%;
+  transform: translateX(-50%) translateY(60px);
+  background: var(--ink); color: var(--bg);
+  padding: 9px 20px; border-radius: 30px;
+  font-size: 0.78rem; font-weight: 500;
+  transition: transform 0.28s cubic-bezier(.34,1.56,.64,1);
+  z-index: 999; white-space: nowrap;
+  pointer-events: none;
+}
+#toast.show { transform: translateX(-50%) translateY(0); }
+
+/* ── MOBILE ── */
+@media (max-width: 640px) {
+  body { overflow: auto; }
+  .workspace { 
+    grid-template-columns: 1fr; 
+    height: auto;
+    overflow: visible;
+  }
+  .panel { 
+    border-right: none; 
+    border-bottom: 1px solid var(--border);
+    max-height: none;
+    overflow: visible;
+  }
+  .preview-area { min-height: 80vw; }
+  .export-section { margin-top: 0; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <span class="logo">CNIC</span>
+    <div>
+      <h1>Card Merger Pro</h1>
+      <p>A4 Layout Builder for Printing</p>
+    </div>
+  </div>
+</header>
+
+<div class="workspace">
+
+  <!-- ── LEFT PANEL ── -->
+  <div class="panel">
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab-btn tab-front active" onclick="switchTab('front')">
+        <span class="dot dot-front"></span> Front
+      </button>
+      <button class="tab-btn tab-back" onclick="switchTab('back')">
+        <span class="dot dot-back"></span> Back
+      </button>
+    </div>
+
+    <!-- FRONT TAB -->
+    <div class="tab-content active" id="tab-front">
+      <div class="section">
+        <div class="section-label">Upload Image</div>
+        <div class="upload-zone" id="dropFront">
+          <input type="file" id="fileFront" accept="image/*">
+          <div class="upload-icon">🪪</div>
+          <strong>CNIC Front Side</strong>
+          <p>Tap to upload or drag & drop</p>
+        </div>
+        <div class="thumb-row" id="thumbFront">
+          <img id="previewFront" alt="Front">
+          <button class="del-btn" onclick="removeImg('front')">✕</button>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-label">Position & Size</div>
+        <div class="pos-display" id="posFront">
+          X: <span id="fX">center</span> &nbsp; Y: <span id="fY">40px</span> &nbsp; Scale: <span id="fS">100%</span>
+        </div>
+
+        <div class="ctrl-group">
+          <div class="ctrl-group-label">↕ Move Vertical</div>
+          <div class="ctrl-row">
+            <button class="btn" onclick="adj('front','y',-5)">▲ Up</button>
+            <button class="btn" onclick="adj('front','y',-20)">⏫ Fast Up</button>
+            <button class="btn" onclick="adj('front','y',5)">▼ Down</button>
+            <button class="btn" onclick="adj('front','y',20)">⏬ Fast Dn</button>
+          </div>
+        </div>
+
+        <div class="ctrl-group">
+          <div class="ctrl-group-label">↔ Move Horizontal</div>
+          <div class="ctrl-row">
+            <button class="btn" onclick="adj('front','x',-5)">◀ Left</button>
+            <button class="btn" onclick="adj('front','x',-20)">⏪ Fast L</button>
+            <button class="btn" onclick="adj('front','x',5)">▶ Right</button>
+            <button class="btn" onclick="adj('front','x',20)">⏩ Fast R</button>
+          </div>
+        </div>
+
+        <div class="ctrl-group">
+          <div class="ctrl-group-label">⊞ Resize (keep ratio)</div>
+          <div class="ctrl-row">
+            <button class="btn" onclick="adj('front','s',-5)">➖ Smaller</button>
+            <button class="btn" onclick="adj('front','s',-15)">⊟ Much ─</button>
+            <button class="btn" onclick="adj('front','s',5)">➕ Bigger</button>
+            <button class="btn" onclick="adj('front','s',15)">⊞ Much +</button>
+          </div>
+        </div>
+
+        <div class="reset-row">
+          <button class="btn" style="width:100%" onclick="resetImg('front')">↺ Reset Front Position</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- BACK TAB -->
+    <div class="tab-content" id="tab-back">
+      <div class="section">
+        <div class="section-label">Upload Image</div>
+        <div class="upload-zone" id="dropBack">
+          <input type="file" id="fileBack" accept="image/*">
+          <div class="upload-icon">🪪</div>
+          <strong>CNIC Back Side</strong>
+          <p>Tap to upload or drag & drop</p>
+        </div>
+        <div class="thumb-row" id="thumbBack">
+          <img id="previewBack" alt="Back">
+          <button class="del-btn" onclick="removeImg('back')">✕</button>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-label">Position & Size</div>
+        <div class="pos-display" id="posBack">
+          X: <span id="bX">center</span> &nbsp; Y: <span id="bY">160px</span> &nbsp; Scale: <span id="bS">100%</span>
+        </div>
+
+        <div class="ctrl-group">
+          <div class="ctrl-group-label">↕ Move Vertical</div>
+          <div class="ctrl-row">
+            <button class="btn" onclick="adj('back','y',-5)">▲ Up</button>
+            <button class="btn" onclick="adj('back','y',-20)">⏫ Fast Up</button>
+            <button class="btn" onclick="adj('back','y',5)">▼ Down</button>
+            <button class="btn" onclick="adj('back','y',20)">⏬ Fast Dn</button>
+          </div>
+        </div>
+
+        <div class="ctrl-group">
+          <div class="ctrl-group-label">↔ Move Horizontal</div>
+          <div class="ctrl-row">
+            <button class="btn" onclick="adj('back','x',-5)">◀ Left</button>
+            <button class="btn" onclick="adj('back','x',-20)">⏪ Fast L</button>
+            <button class="btn" onclick="adj('back','x',5)">▶ Right</button>
+            <button class="btn" onclick="adj('back','x',20)">⏩ Fast R</button>
+          </div>
+        </div>
+
+        <div class="ctrl-group">
+          <div class="ctrl-group-label">⊞ Resize (keep ratio)</div>
+          <div class="ctrl-row">
+            <button class="btn" onclick="adj('back','s',-5)">➖ Smaller</button>
+            <button class="btn" onclick="adj('back','s',-15)">⊟ Much ─</button>
+            <button class="btn" onclick="adj('back','s',5)">➕ Bigger</button>
+            <button class="btn" onclick="adj('back','s',15)">⊞ Much +</button>
+          </div>
+        </div>
+
+        <div class="reset-row">
+          <button class="btn" style="width:100%" onclick="resetImg('back')">↺ Reset Back Position</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Export -->
+    <div class="export-section">
+      <div class="section-label" style="margin-bottom:4px">Export</div>
+      <button class="export-btn btn-pdf" id="btnPdf" onclick="exportPDF()">📄 Export as PDF (A4)</button>
+      <button class="export-btn btn-jpg" id="btnJpg" onclick="exportJPEG()">🖼 Export as JPEG</button>
+    </div>
+
+  </div>
+
+  <!-- ── RIGHT: A4 Preview ── -->
+  <div class="preview-area">
+    <div class="preview-tag">▣ Live A4 Preview — what you see is what prints</div>
+    <div class="a4-outer">
+      <div class="a4-shadow" id="a4Shadow">
+        <canvas id="previewCanvas"></canvas>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast">Done!</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════
+// A4 logical dimensions in "layout units" (1 unit = 1px on a reference 794px wide canvas)
+// A4 at 96dpi = 794 x 1123 px
+const A4_W = 794, A4_H = 1123;
+
+// Per-image state: x, y in layout units from top-left of A4; scale in %
+const imgs = {
+  front: { el: null, x: 30, y: 40,  scale: 100 },
+  back:  { el: null, x: 30, y: 580, scale: 100 },
+};
+
+// Canvas render scale (for high-res display canvas)
+let DISP_SCALE = 1;
+let canvW, canvH;
+
+// ═══════════════════════════════════════════════════
+// SIZE A4 FRAME
+// ═══════════════════════════════════════════════════
+function sizeCanvas() {
+  const area = document.querySelector('.preview-area');
+  const availW = area.clientWidth  - 32;
+  const availH = area.clientHeight - 60;
+  const ratio  = A4_W / A4_H;
+  let w = availW, h = w / ratio;
+  if (h > availH) { h = availH; w = h * ratio; }
+  w = Math.floor(w); h = Math.floor(h);
+  DISP_SCALE = w / A4_W;
+
+  const canvas = document.getElementById('previewCanvas');
+  // Render at 2× for crisp display
+  const PX = 2;
+  canvW = w * PX; canvH = h * PX;
+  canvas.width  = canvW;
+  canvas.height = canvH;
+  canvas.style.width  = w + 'px';
+  canvas.style.height = h + 'px';
+  document.getElementById('a4Shadow').style.width  = w + 'px';
+  document.getElementById('a4Shadow').style.height = h + 'px';
+  render();
+}
+
+window.addEventListener('resize', sizeCanvas);
+window.addEventListener('load', sizeCanvas);
+
+// ═══════════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════════
+function render() {
+  const canvas = document.getElementById('previewCanvas');
+  const ctx = canvas.getContext('2d');
+  const sc = (canvW / A4_W); // how many canvas px per layout unit
+
+  ctx.clearRect(0, 0, canvW, canvH);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvW, canvH);
+
+  // Faint grid (optional elegance)
+  ctx.strokeStyle = 'rgba(0,0,0,0.03)';
+  ctx.lineWidth = 1;
+  for (let gx = 0; gx < canvW; gx += 40 * sc) {
+    ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, canvH); ctx.stroke();
+  }
+  for (let gy = 0; gy < canvH; gy += 40 * sc) {
+    ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(canvW, gy); ctx.stroke();
+  }
+
+  drawImg(ctx, 'front', sc);
+  drawImg(ctx, 'back',  sc);
+
+  updatePosDisplay();
+}
+
+function drawImg(ctx, side, sc) {
+  const s = imgs[side];
+  if (!s.el) return;
+
+  const img = s.el;
+  // Compute drawn width in layout units
+  const baseW = A4_W - 60; // default full width minus margins
+  const drawW = baseW * (s.scale / 100);
+  const drawH = drawW * (img.naturalHeight / img.naturalWidth);
+
+  const cx = s.x * sc;
+  const cy = s.y * sc;
+  const cw = drawW * sc;
+  const ch = drawH * sc;
+
+  // Shadow
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.18)';
+  ctx.shadowBlur  = 10 * sc;
+  ctx.shadowOffsetX = 2 * sc;
+  ctx.shadowOffsetY = 3 * sc;
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  roundRect(ctx, cx, cy, cw, ch, 4 * sc);
+  ctx.fill();
+  ctx.restore();
+
+  // Image
+  ctx.save();
+  ctx.beginPath();
+  roundRect(ctx, cx, cy, cw, ch, 4 * sc);
+  ctx.clip();
+  ctx.drawImage(img, cx, cy, cw, ch);
+  ctx.restore();
+
+  // Border
+  const color = side === 'front' ? '#d4522a55' : '#2a6bd455';
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2 * sc;
+  ctx.beginPath();
+  roundRect(ctx, cx, cy, cw, ch, 4 * sc);
+  ctx.stroke();
+
+  // Label tag
+  ctx.fillStyle = side === 'front' ? '#d4522a' : '#2a6bd4';
+  const tagW = 40 * sc, tagH = 14 * sc;
+  ctx.beginPath();
+  roundRect(ctx, cx, cy, tagW, tagH, 3 * sc);
+  ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.font = `${7 * sc}px DM Mono, monospace`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(side.toUpperCase(), cx + tagW / 2, cy + tagH / 2);
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  r = Math.min(r, w / 2, h / 2);
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function updatePosDisplay() {
+  const f = imgs.front, b = imgs.back;
+  const set = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
+  set('fX', f.x + 'u'); set('fY', f.y + 'u'); set('fS', f.scale + '%');
+  set('bX', b.x + 'u'); set('bY', b.y + 'u'); set('bS', b.scale + '%');
+}
+
+// ═══════════════════════════════════════════════════
+// UPLOAD
+// ═══════════════════════════════════════════════════
+function setupUpload(side) {
+  const cap = s => s[0].toUpperCase() + s.slice(1);
+  const input = document.getElementById('file' + cap(side));
+  input.addEventListener('change', e => loadFile(e.target.files[0], side));
+
+  const zone = document.getElementById('drop' + cap(side));
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault(); zone.classList.remove('drag-over');
+    const f = e.dataTransfer.files[0];
+    if (f && f.type.startsWith('image/')) loadFile(f, side);
+  });
+}
+
+function loadFile(file, side) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const image = new Image();
+    image.onload = () => {
+      imgs[side].el = image;
+      const cap = s => s[0].toUpperCase() + s.slice(1);
+      document.getElementById('preview' + cap(side)).src = ev.target.result;
+      document.getElementById('thumb'   + cap(side)).style.display = 'block';
+      render();
+      toast('✅ ' + cap(side) + ' image loaded');
+    };
+    image.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeImg(side) {
+  const cap = s => s[0].toUpperCase() + s.slice(1);
+  imgs[side].el = null;
+  document.getElementById('thumb'    + cap(side)).style.display = 'none';
+  document.getElementById('preview'  + cap(side)).src = '';
+  document.getElementById('file'     + cap(side)).value = '';
+  render();
+}
+
+setupUpload('front');
+setupUpload('back');
+
+// ═══════════════════════════════════════════════════
+// ADJUSTMENTS
+// ═══════════════════════════════════════════════════
+function adj(side, axis, delta) {
+  const s = imgs[side];
+  if (axis === 'x') s.x = Math.max(-200, Math.min(A4_W, s.x + delta));
+  if (axis === 'y') s.y = Math.max(-200, Math.min(A4_H, s.y + delta));
+  if (axis === 's') s.scale = Math.max(10, Math.min(200, s.scale + delta));
+  render();
+}
+
+function resetImg(side) {
+  if (side === 'front') { imgs.front.x = 30; imgs.front.y = 40;  imgs.front.scale = 100; }
+  else                  { imgs.back.x  = 30; imgs.back.y  = 580; imgs.back.scale  = 100; }
+  render();
+  toast('↺ ' + side[0].toUpperCase() + side.slice(1) + ' reset');
+}
+
+// ═══════════════════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════════════════
+function switchTab(side) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelector('.tab-' + side).classList.add('active');
+  document.getElementById('tab-' + side).classList.add('active');
+}
+
+// ═══════════════════════════════════════════════════
+// EXPORT — uses a separate high-res canvas at 300dpi equivalent
+// ═══════════════════════════════════════════════════
+function buildExportCanvas() {
+  // 300dpi A4: 2480 x 3508 px (standard print size)
+  const EW = 2480, EH = 3508;
+  const sc = EW / A4_W;
+
+  const offC = document.createElement('canvas');
+  offC.width = EW; offC.height = EH;
+  const ctx = offC.getContext('2d');
+
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, EW, EH);
+
+  ['front', 'back'].forEach(side => {
+    const s = imgs[side];
+    if (!s.el) return;
+    const img = s.el;
+    const baseW = A4_W - 60;
+    const drawW = baseW * (s.scale / 100);
+    const drawH = drawW * (img.naturalHeight / img.naturalWidth);
+    const cx = s.x * sc, cy = s.y * sc;
+    const cw = drawW * sc, ch = drawH * sc;
+
+    // Shadow
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.15)';
+    ctx.shadowBlur  = 10 * sc;
+    ctx.shadowOffsetX = 2 * sc; ctx.shadowOffsetY = 3 * sc;
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); roundRect(ctx, cx, cy, cw, ch, 4 * sc); ctx.fill();
+    ctx.restore();
+
+    // Draw image
+    ctx.save();
+    ctx.beginPath(); roundRect(ctx, cx, cy, cw, ch, 4 * sc); ctx.clip();
+    ctx.drawImage(img, cx, cy, cw, ch);
+    ctx.restore();
+
+    // Border
+    ctx.strokeStyle = side === 'front' ? '#d4522a44' : '#2a6bd444';
+    ctx.lineWidth = 2 * sc;
+    ctx.beginPath(); roundRect(ctx, cx, cy, cw, ch, 4 * sc); ctx.stroke();
+  });
+
+  return offC;
+}
+
+async function exportPDF() {
+  const btn = document.getElementById('btnPdf');
+  btn.disabled = true; btn.textContent = '⏳ Generating PDF…';
+  try {
+    await new Promise(r => setTimeout(r, 50));
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const offC = buildExportCanvas();
+    const imgData = offC.toDataURL('image/jpeg', 0.97);
+    doc.addImage(imgData, 'JPEG', 0, 0, 210, 297);
+    doc.save('CNIC_A4_Layout.pdf');
+    toast('✅ PDF exported!');
+  } catch(e) { toast('❌ Export failed'); console.error(e); }
+  btn.disabled = false; btn.textContent = '📄 Export as PDF (A4)';
+}
+
+function exportJPEG() {
+  const btn = document.getElementById('btnJpg');
+  btn.disabled = true; btn.textContent = '⏳ Saving…';
+  try {
+    const offC = buildExportCanvas();
+    offC.toBlob(blob => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'CNIC_A4_Layout.jpg';
+      a.click();
+      toast('✅ JPEG exported!');
+      btn.disabled = false; btn.textContent = '🖼 Export as JPEG';
+    }, 'image/jpeg', 0.97);
+  } catch(e) {
+    toast('❌ Export failed'); console.error(e);
+    btn.disabled = false; btn.textContent = '🖼 Export as JPEG';
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════════
+let toastT;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastT);
+  toastT = setTimeout(() => el.classList.remove('show'), 2600);
+}
+</script>
+</body>
+</html>
